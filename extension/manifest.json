@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SaveSift \u2014 LinkedIn Capture",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fetch visible LinkedIn post text on explicit request from SaveSift. Session cookies remain in the browser.",
   "permissions": [
     "activeTab",
@@ -23,5 +23,18 @@
       "https://saved-posts-lab-nithin.tanglednoodles.chatgpt.site/*",
       "http://localhost:8000/*"
     ]
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://save-sift.onrender.com/*",
+        "https://saved-posts-lab-nithin.tanglednoodles.chatgpt.site/*",
+        "http://localhost:8000/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

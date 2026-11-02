@@ -34,7 +34,7 @@ function extractPost(expectedId) {
   return {status: 'ok', title, text: text.slice(0, 50000), author, url: location.href, possiblyTruncated: /…see more|\.\.\.see more|…more/i.test(text)};
 }
 let pending = false;
-chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+function handleCapture(message, sender, sendResponse) {
   let origin;
   try { origin = new URL(sender.url).origin; } catch { return false; }
   if (!TRUSTED_ORIGINS.has(origin) || message?.type !== 'SAVESIFT_FETCH_POST') return false;
@@ -62,4 +62,9 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
     return {status: 'unavailable', error: 'Could not identify this post’s text. Check the LinkedIn tab: sign in, expand the post if needed, then retry. You can also paste the text manually.'};
   })().then(sendResponse).catch(e => sendResponse({status: 'error', error: e.message})).finally(() => {pending = false;});
   return true;
+}
+chrome.runtime.onMessageExternal.addListener(handleCapture);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return false;
+  return handleCapture(message, sender, sendResponse);
 });

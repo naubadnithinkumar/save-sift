@@ -1,0 +1,11 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+let listener;const replies=[],calls=[];const window={addEventListener(type,fn){listener=fn},postMessage(msg,origin){replies.push({msg,origin})}};
+const chrome={runtime:{id:'a'.repeat(32),getManifest:()=>({version:'0.2.1'}),sendMessage(msg,cb){calls.push(msg);cb({status:'ok',title:'Example',text:'Post text'})}}};
+const c=vm.createContext({window,chrome,location:{origin:'https://save-sift.onrender.com'}});
+vm.runInContext(fs.readFileSync('extension/bridge.js','utf8'),c);
+const send=(data,origin='https://save-sift.onrender.com',source=window)=>listener({data,origin,source});
+send({source:'savesift-page',requestId:'1',type:'SAVESIFT_PING'},'https://evil.test');assert.equal(replies.length,0);
+send({source:'savesift-page',requestId:'1',type:'SAVESIFT_PING'});assert.equal(replies[0].msg.payload.status,'connected');
+send({source:'savesift-page',requestId:'2',type:'SAVESIFT_FETCH_POST',activityId:'bad'});assert.equal(calls.length,0);
+send({source:'savesift-page',requestId:'3',type:'SAVESIFT_FETCH_POST',activityId:'7523021211938004993'});assert.equal(calls.length,1);assert.equal(replies[1].msg.payload.title,'Example');assert.equal(replies[1].msg.requestId,'3');
+console.log('PASS: bridge discovery without page chrome.runtime, origin checks, ID validation, correlated capture result');

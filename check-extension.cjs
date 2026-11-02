@@ -2,7 +2,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 let listener;
-const context = vm.createContext({chrome:{runtime:{onMessageExternal:{addListener(fn){listener=fn}}}},URL,console});
+const context = vm.createContext({chrome:{runtime:{onMessageExternal:{addListener(fn){listener=fn}},onMessage:{addListener(){}}}},URL,console});
 vm.runInContext(fs.readFileSync('extension/background.js','utf8'),context);
 assert.equal(vm.runInContext("postUrl('7522886392381837312')",context),'https://www.linkedin.com/feed/update/urn:li:activity:7522886392381837312/');
 assert.throws(()=>vm.runInContext("postUrl('https://evil.test')",context));

@@ -19,11 +19,28 @@ $('demo').onclick=()=>{[['9000000000000000001','Making inference efficient','Qua
 
 // Explicit browser-session capture; no cookies or LinkedIn tokens leave Chrome.
 $('extension-id').value = localStorage.getItem('savesift:extension-id') || '';
-$('connect-extension').onclick = () => {
-  const id = $('extension-id').value.trim();
-  if (!/^[a-p]{32}$/.test(id)) { $('fetch-status').textContent = 'Enter the 32-character ID from the installed extension popup.'; return; }
-  localStorage.setItem('savesift:extension-id', id);
-  $('fetch-status').textContent = 'Extension ID saved. Enter a post URL or ID, then click Fetch.';
+function extensionRequest(type, activityId, timeout = 4000) {
+  return new Promise((resolve, reject) => {
+    const requestId = crypto.randomUUID();
+    const listener = event => {
+      if (event.source !== window || event.origin !== location.origin || event.data?.source !== 'savesift-extension' || event.data.requestId !== requestId) return;
+      cleanup(); resolve(event.data.payload);
+    };
+    const cleanup = () => { clearTimeout(timer); window.removeEventListener('message', listener); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('Extension not connected. Install/reload SaveSift v0.2.1, enable its site access, then reload this page in the same Chrome profile.')); }, timeout);
+    window.addEventListener('message', listener);
+    window.postMessage({source: 'savesift-page', requestId, type, activityId}, location.origin);
+  });
+}
+$('connect-extension').onclick = async () => {
+  $('fetch-status').textContent = 'Checking extension connection…';
+  try {
+    const result = await extensionRequest('SAVESIFT_PING');
+    if (result.status !== 'connected') throw new Error('Extension did not respond correctly.');
+    $('extension-id').value = result.extensionId;
+    localStorage.setItem('savesift:extension-id', result.extensionId);
+    $('fetch-status').textContent = 'Connected to extension v' + result.version + '. Ready to fetch.';
+  } catch (e) { $('fetch-status').textContent = e.message; }
 };
 let fetching = false;
 $('fetch-post').onclick = async () => {
@@ -31,22 +48,13 @@ $('fetch-post').onclick = async () => {
   const id = activity($('url').value);
   const extensionId = $('extension-id').value.trim();
   if (!id) { $('fetch-status').textContent = 'Enter a valid LinkedIn activity URL or ID first.'; return; }
-  if (!/^[a-p]{32}$/.test(extensionId) || !globalThis.chrome?.runtime?.sendMessage) {
-    $('fetch-status').textContent = 'Install the SaveSift Chrome extension and connect its ID below. Use Chrome to fetch through your LinkedIn session.'; return;
-  }
   fetching = true;
   const requestUser = user;
   $('fetch-post').disabled = true;
   $('fetch-status').textContent = 'Opening LinkedIn to read the post. If sign-in is required, log in there and retry here.';
   try {
-    const response = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Extension timed out. Check the LinkedIn tab and retry.')), 35000);
-      chrome.runtime.sendMessage(extensionId, {type: 'SAVESIFT_FETCH_POST', activityId: id}, result => {
-        clearTimeout(timer);
-        if (chrome.runtime.lastError) reject(new Error('Extension unavailable. Install/reload version 0.2.0 and verify its ID.'));
-        else resolve(result);
-      });
-    });
+    await extensionRequest('SAVESIFT_PING');
+    const response = await extensionRequest('SAVESIFT_FETCH_POST', id, 35000);
     if (response?.status !== 'ok') throw new Error(response?.error || 'Post text unavailable. You can paste the text manually.');
     if (user !== requestUser || activity($('url').value) !== id) throw new Error('Workspace or URL changed during fetch. Retry for the current post.');
     if (typeof response.title !== 'string' || typeof response.text !== 'string' || !response.text.trim()) throw new Error('Extension returned no usable post content.');

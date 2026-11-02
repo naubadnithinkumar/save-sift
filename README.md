@@ -25,12 +25,12 @@ Buildless browser-local app plus explicit-click Chrome URL collector and browser
 ## Try it
 Open the published app. Load demo, filter topics, search, edit content, switch local workspace labels, export/import JSON. Import the supplied SaveState JSON to produce one activity reference. Paste text to organize it. Data lives in localStorage; labels are not a security boundary.
 
-## Chrome extension v0.2.0
+## Chrome extension v0.2.1
 
 1. Download this repository and extract it, or pull the latest main branch.
 2. Open `chrome://extensions`, enable Developer mode, and Load unpacked the `extension/` directory. If already installed, reload it and approve the new LinkedIn host permission.
-3. Open the extension popup, copy its extension ID.
-4. Open https://save-sift.onrender.com, expand **Connect Chrome extension**, paste the ID and save it. Refresh the app after installing the extension.
+3. Reload the SaveSift page in the same Chrome profile after installing/reloading the extension.
+4. Open https://save-sift.onrender.com, expand **Connect Chrome extension**, click **Check extension connection**. The ID is detected automatically. Refresh the app after installing the extension.
 5. Enter a LinkedIn activity URL or ID and click **Fetch from LinkedIn**. The extension opens or focuses the post tab.
 6. If redirected to login, sign in directly on LinkedIn, return to SaveSift and retry. OAuth is not a way to obtain browser-session cookies.
 7. Return to SaveSift, review the title/text and click **Save post**.
@@ -56,3 +56,6 @@ user_saved_posts: userId + activityId, unique compound key; activityId is a stri
 
 ## Acceptance checks
 Duplicate IDs create one record; IDs retain all digits; imported saved:false items are ignored; user text is escaped; no content means Needs content; local workspace labels load separate collections; extension exports the app-compatible schema.
+
+### v0.2.1 connection fix
+Uses an isolated content-script bridge instead of requiring chrome.runtime in the web page. After reloading the extension, reload SaveSift; the bridge is injected only on allowlisted app origins.
