@@ -63,3 +63,23 @@ Uses an isolated content-script bridge instead of requiring chrome.runtime in th
 ## Privacy policy
 
 [Published policy](https://save-sift.onrender.com/privacy.html) · [Repository policy](PRIVACY.md)
+
+## Saved-post URL collection (v0.3.0)
+
+Reload the updated extension, open LinkedIn My Items → Saved posts, then click
+**Collect loaded Saved Posts URLs** in the popup. Scroll the LinkedIn list manually
+and repeat. IDs are deduplicated locally. Only links currently present inside the
+page's main area are collected; lazy loading, virtualized items, unsupported URL
+formats, and LinkedIn DOM changes can leave gaps. No completeness claim is made.
+
+For response-based extraction, save each saved-post collection response from
+DevTools as a separate valid JSON file. Use **Import saved-post response JSON files**
+to select all pagination files. The importer recursively reads only saved:true
+SaveState entities, ignores unrelated activity references, and preserves IDs as
+strings. A malformed file aborts that import without changing the collection.
+Never import request headers or cookies.
+
+Use **Export URL list (.txt)** for canonical post URLs, or **Export JSON for app**
+for SaveSift's existing import. These actions require no new permissions, read no
+cookies, make no Voyager API calls, and do not automatically track saves or unsaves.
+Run `node check-collection.cjs` for response-extraction regression checks.
