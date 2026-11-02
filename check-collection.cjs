@@ -1,0 +1,11 @@
+const assert = require('node:assert/strict');
+const {activityId,savedIds,url} = require('./extension/collection.js');
+const id = '7522886392381837312';
+const saved = {saved:true,$type:'com.linkedin.voyager.dash.feed.SaveState',entityUrn:'urn:li:fsd_saveState:(SAVE,urn:li:activity:'+id+')'};
+assert.deepEqual(savedIds({nested:{included:[saved,saved,{...saved,saved:false},{entityUrn:'urn:li:activity:1111111111111111111'}]}}),[id]);
+assert.deepEqual(savedIds({Included:[saved]}),[id]);
+assert.equal(activityId('https://www.linkedin.com/posts/person_topic-activity-'+id+'-abcd'),id);
+assert.equal(activityId('urn:li:activity:'+id),id);
+assert.equal(activityId('urn:li:activity:12345678901234567890123456'),null);
+assert.equal(url(id),'https://www.linkedin.com/feed/update/urn:li:activity:'+id+'/');
+console.log('Collection extraction checks passed');
