@@ -83,3 +83,18 @@ Use **Export URL list (.txt)** for canonical post URLs, or **Export JSON for app
 for SaveSift's existing import. These actions require no new permissions, read no
 cookies, make no Voyager API calls, and do not automatically track saves or unsaves.
 Run `node check-collection.cjs` for response-extraction regression checks.
+
+## Fetch card content (v0.4.0)
+
+Reload extension v0.4.0 and refresh SaveSift. Click **Fetch content** on an imported
+card to populate its title and text and update topic grouping. Activity IDs remain
+internal; missing titles display **Content pending**.
+
+The extension opens/focuses the requested LinkedIn tab, first tries a public HTML
+GET without credentials from that tab's isolated context, and parses it with the
+browser's built-in DOMParser. This avoids adding a server or an external parser
+dependency. Only recognized post-content elements are accepted, with canonical
+identity checks; metadata alone is rejected. If HTML is unusable, the existing
+rendered-tab capture uses the browser session. No cookies are exported and no
+response scripts are executed by the HTML parser. A tab can still open even when
+HTML extraction succeeds. Requests run one at a time on explicit clicks.
