@@ -4,11 +4,11 @@ Effective date: November 2, 2026
 
 ## Scope and developer
 
-This policy covers SaveSift — LinkedIn Capture (the Chrome extension) and the current SaveSift browser-local web application. SaveSift is maintained by GitHub user naubadnithinkumar. This policy describes the current proof of concept, including extension version 0.2.1. Planned integrations and features are not covered as if they already exist.
+This policy covers SaveSift — LinkedIn Capture (the Chrome extension) and the current SaveSift browser-local web application. SaveSift is maintained by GitHub user naubadnithinkumar. This policy describes the current proof of concept, including extension version 0.3.0. Planned integrations and features are not covered as if they already exist.
 
 ## Information we access
 
-When you explicitly collect a post URL using the extension popup, the extension reads the active tab URL, validates that it is a LinkedIn activity URL, and stores its activity ID locally.
+When you explicitly collect a post URL using the extension popup, the extension reads the active tab URL, validates that it is a LinkedIn activity URL, and stores its activity ID locally. On explicit request, the extension also reads LinkedIn post links from the loaded Saved Posts page, or extracts saved activity IDs from JSON response files you select. These IDs are merged into the local collection and can be exported as JSON or a text URL list. It does not automatically scroll, fetch collection API responses, or verify that every saved post has been collected.
 
 When you request “Fetch from LinkedIn” in SaveSift, the extension locates or opens the specified LinkedIn post in a browser tab. It reads the visible post text, derives a title from the first line, and may read the displayed author name and post URL. It checks tab URLs and page state to detect loading and sign-in requirements. It does not collect general browsing history or automatically synchronize LinkedIn saved posts.
 
