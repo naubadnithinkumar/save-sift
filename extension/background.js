@@ -91,6 +91,7 @@ function handleCapture(message, sender, sendResponse) {
       }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
+    let injectionError = '';
     for (let attempt = 0; attempt < 24; attempt++) {
       await new Promise(r => setTimeout(r, 1000));
       try {
@@ -102,10 +103,12 @@ function handleCapture(message, sender, sendResponse) {
         if (result?.status === 'ok') return result;
         if (result?.status === 'login_required') return {status: 'login_required', error: 'Sign in to LinkedIn, then retry.'};
       } catch (e) {
+        injectionError = e.message;
+        if (/permission|Cannot access|not allowed|host/i.test(e.message)) return {status:'error', error:'Chrome blocked LinkedIn access. In chrome://extensions → SaveSift → Site access, allow LinkedIn and SaveSift, reload the extension and refresh both tabs. Details: ' + e.message};
         if (/No tab|closed/i.test(e.message)) return {status: 'error', error: 'LinkedIn tab was closed. Retry to reopen it.'};
       }
     }
-    return {status: 'unavailable', error: 'Could not identify this post’s text. Check the LinkedIn tab: sign in, expand the post if needed, then retry. You can also paste the text manually.'};
+    return {status: 'unavailable', error: (injectionError ? 'Browser capture failed: ' + injectionError + '. ' : '') + 'Could not identify this post’s text. Check the LinkedIn tab: sign in, expand the post if needed, then retry. You can also paste the text manually.'};
   })().then(sendResponse).catch(e => sendResponse({status: 'error', error: e.message})).finally(() => {pending = false;});
   return true;
 }
