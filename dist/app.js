@@ -6,7 +6,7 @@ function topic(r){if(!r.text)return 'Needs content';let best='Other',score=0;for
 function persist(){localStorage.setItem('savedlab:'+user,JSON.stringify(records));render()}
 function load(){try{records=JSON.parse(localStorage.getItem('savedlab:'+user)||'[]')}catch{records=[]}filter='All';render()}
 function upsert(r){const old=records.find(x=>x.activityId===r.activityId);if(old){if(r.text)old.text=r.text;if(r.title)old.title=r.title;return false}records.unshift({activityId:r.activityId,title:r.title||'',text:r.text||'',sample:!!r.sample});return true}
-function render(){const ts=[...new Set(records.map(topic))];$('count').textContent=records.length;$('topics').textContent=ts.length;$('ready').textContent=records.filter(r=>r.text).length;$('filters').innerHTML=['All',...ts].map(t=>`<button class="topic ${filter===t?'active':''}" data-topic="${esc(t)}">${esc(t)}</button>`).join('');const q=$('search').value.toLowerCase();const shown=records.filter(r=>(filter==='All'||topic(r)===filter)&&(r.title+' '+r.text+' '+r.activityId).toLowerCase().includes(q));const content=shown.filter(r=>r.text);$('digest').innerHTML=content.length?`<div class="banner"><b>${esc(filter==='All'?'Collection highlights':filter)}</b><p class="muted">Extracted opening sentences · ${content.length} sources · not fact-checked</p>${content.slice(0,5).map(r=>`<p>${esc((r.text.match(/[^.!?]+[.!?]*/)||[r.text])[0].slice(0,500))} <a href="https://www.linkedin.com/feed/update/urn:li:activity:${r.activityId}/" target="_blank" rel="noopener">Source ↗</a></p>`).join('')}</div>`:'';$('posts').innerHTML=shown.length?shown.map(r=>`<article class="card"><div class="row"><span class="badge">${esc(topic(r))}</span>${r.sample?'<span class="badge">Synthetic demo</span>':''}</div><h3>${esc(r.title||'Content pending')}</h3><p>${esc(r.text||'URL imported. Add content to enable grouping and highlights.')}</p><div class="row"><a target="_blank" rel="noopener" href="https://www.linkedin.com/feed/update/urn:li:activity:${r.activityId}/">Open original ↗</a><button data-fetch="${r.activityId}">Fetch content</button><button data-edit="${r.activityId}">Edit content</button><button data-remove="${r.activityId}">Remove</button></div></article>`).join(''):'<p class="muted">Your shelf is empty here. Add a post, import JSON, or load the clearly labeled demo.</p>'}
+function render(){const ts=[...new Set(records.map(topic))];$('count').textContent=records.length;$('topics').textContent=ts.length;$('ready').textContent=records.filter(r=>r.text).length;$('filters').innerHTML=['All',...ts].map(t=>`<button class="topic ${filter===t?'active':''}" data-topic="${esc(t)}">${esc(t)}</button>`).join('');const q=$('search').value.toLowerCase();const shown=records.filter(r=>(filter==='All'||topic(r)===filter)&&(r.title+' '+r.text+' '+r.activityId).toLowerCase().includes(q));const content=shown.filter(r=>r.text);$('digest').innerHTML=content.length?`<div class="banner"><b>${esc(filter==='All'?'Collection highlights':filter)}</b><p class="muted">Extracted opening sentences · ${content.length} sources · not fact-checked</p>${content.slice(0,5).map(r=>`<p>${esc((r.text.match(/[^.!?]+[.!?]*/)||[r.text])[0].slice(0,500))} <a href="https://www.linkedin.com/feed/update/urn:li:activity:${r.activityId}/" target="_blank" rel="noopener">Source ↗</a></p>`).join('')}</div>`:'';$('posts').innerHTML=shown.length?shown.map(r=>`<article class="card"><div class="row"><span class="badge">${esc(topic(r))}</span>${r.sample?'<span class="badge">Synthetic demo</span>':''}</div><h3>${esc(r.title||'Content pending')}</h3><p>${esc(r.text||'URL imported. Add content to enable grouping and highlights.')}</p><div class="row"><a target="_blank" rel="noopener" href="https://www.linkedin.com/feed/update/urn:li:activity:${r.activityId}/">Open original ↗</a><button data-fetch="${r.activityId}">Fetch content</button><span role="status" data-fetch-status="${r.activityId}"></span><button data-edit="${r.activityId}">Edit content</button><button data-remove="${r.activityId}">Remove</button></div></article>`).join(''):'<p class="muted">Your shelf is empty here. Add a post, import JSON, or load the clearly labeled demo.</p>'}
 $('add').onsubmit=e=>{e.preventDefault();const id=activity($('url').value);if(!id){$('notice').textContent='Enter a valid activity ID or activity URL.';return}const added=upsert({activityId:id,title:$('title').value.trim(),text:$('text').value.trim()});persist();$('add').reset();$('notice').textContent=added?'Post saved.':'Existing post updated; no duplicate created.'};
 $('filters').onclick=e=>{if(e.target.dataset.topic){filter=e.target.dataset.topic;render()}};$('search').oninput=render;
 $('posts').onclick=async e=>{
@@ -26,10 +26,10 @@ function extensionRequest(type, activityId, timeout = 4000) {
     const requestId = crypto.randomUUID();
     const listener = event => {
       if (event.source !== window || event.origin !== location.origin || event.data?.source !== 'savesift-extension' || event.data.requestId !== requestId) return;
-      cleanup(); resolve(event.data.payload);
+      cleanup(); if (!event.data.payload) reject(new Error('Extension returned an empty response. Reload it in chrome://extensions, then refresh SaveSift.')); else resolve(event.data.payload);
     };
     const cleanup = () => { clearTimeout(timer); window.removeEventListener('message', listener); };
-    const timer = setTimeout(() => { cleanup(); reject(new Error('Extension not connected. Install/reload SaveSift v0.4.0, enable its site access, then reload this page in the same Chrome profile.')); }, timeout);
+    const timer = setTimeout(() => { cleanup(); reject(new Error(type === 'SAVESIFT_FETCH_POST' ? 'Capture timed out. Check the LinkedIn tab and extension service-worker errors; no content was saved.' : 'Extension did not answer. Reload SaveSift v0.4.1 in chrome://extensions, allow access to SaveSift and LinkedIn, then refresh this page in the same Chrome profile.')); }, timeout);
     window.addEventListener('message', listener);
     window.postMessage({source: 'savesift-page', requestId, type, activityId}, location.origin);
   });
@@ -55,7 +55,7 @@ $('fetch-post').onclick = async () => {
   $('fetch-post').disabled = true;
   $('fetch-status').textContent = 'Opening LinkedIn to read the post. If sign-in is required, log in there and retry here.';
   try {
-    await extensionRequest('SAVESIFT_PING');
+    await requireCaptureExtension();
     const response = await extensionRequest('SAVESIFT_FETCH_POST', id, 50000);
     if (response?.status !== 'ok') throw new Error(response?.error || 'Post text unavailable. You can paste the text manually.');
     if (user !== requestUser || activity($('url').value) !== id) throw new Error('Workspace or URL changed during fetch. Retry for the current post.');
@@ -75,14 +75,17 @@ async function fetchCard(id, button) {
   if (fetching) { $('notice').textContent = 'Another fetch is in progress.'; return; }
   const record = records.find(r => r.activityId === id);
   if (!record) return;
+  const status = button.parentElement.querySelector('[data-fetch-status]');
+  const report = text => { if (status) status.textContent = text; $('notice').textContent = text; };
   fetching = true;
   const requestUser = user;
   const originalText = record.text, originalTitle = record.title;
   button.disabled = true;
   button.textContent = 'Fetching…';
-  $('notice').textContent = 'Fetching post HTML; browser capture will be used if necessary.';
+  report('Checking extension connection…');
   try {
-    await extensionRequest('SAVESIFT_PING');
+    await requireCaptureExtension();
+    report('Extension connected. Reading LinkedIn; requests appear in the LinkedIn tab, not this page.');
     const response = await extensionRequest('SAVESIFT_FETCH_POST', id, 50000);
     if (response?.status !== 'ok' || typeof response.text !== 'string' ||
         !response.text.trim() || typeof response.title !== 'string') {
@@ -97,6 +100,16 @@ async function fetchCard(id, button) {
     $('notice').textContent = response.possiblyTruncated
       ? 'Content saved; it may be truncated. Review or expand the LinkedIn post and retry.'
       : 'Title and content saved. Topic grouping updated.';
-  } catch(error) { $('notice').textContent = error.message; }
+  } catch(error) { report(error.message); }
   finally { fetching = false; button.disabled = false; button.textContent = 'Fetch content'; }
+}
+
+async function requireCaptureExtension() {
+  const result = await extensionRequest('SAVESIFT_PING');
+  if (result?.status !== 'connected') throw new Error('Extension connection failed. Reload the extension and refresh SaveSift.');
+  const parts = String(result.version || '').split('.').map(Number);
+  if (!(parts[0] > 0 || parts[1] > 4 || (parts[1] === 4 && parts[2] >= 1))) {
+    throw new Error('Connected extension v' + result.version + ' is outdated. Load v0.4.1 from the latest repository extension/ folder, then refresh SaveSift.');
+  }
+  return result;
 }
