@@ -59,3 +59,7 @@ Duplicate IDs create one record; IDs retain all digits; imported saved:false ite
 
 ### v0.2.1 connection fix
 Uses an isolated content-script bridge instead of requiring chrome.runtime in the web page. After reloading the extension, reload SaveSift; the bridge is injected only on allowlisted app origins.
+
+## Privacy policy
+
+[Published policy](https://save-sift.onrender.com/privacy.html) · [Repository policy](PRIVACY.md)
