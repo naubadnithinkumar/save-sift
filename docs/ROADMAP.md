@@ -8,3 +8,6 @@
 6. Add embeddings, multi-topic assignment, editable categories and source-linked LLM synthesis.
 
 Automatic LinkedIn saved-state tracking, X bookmarks and Instagram saved collections are not implemented. Each requires independent access validation. Never export LinkedIn session cookies to the backend.
+
+## Implemented in v0.2.0
+Explicit app-to-extension post capture using a normal LinkedIn browser tab. No cookie export and no OAuth login. Saved-collection sync remains out of scope.

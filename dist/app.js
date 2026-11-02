@@ -16,3 +16,46 @@ $('import').onclick=()=>importJSON($('json').value);$('file').onchange=async e=>
 $('export').onclick=()=>{const b=new Blob([JSON.stringify({schemaVersion:1,userId:user,posts:records},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='saved-posts.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('clear').onclick=()=>{if(confirm('Delete this local workspace collection?')){records=[];persist()}};
 $('demo').onclick=()=>{[['9000000000000000001','Making inference efficient','Quantization reduces model weight memory. Batching can increase inference throughput, while KV cache stores attention keys and values for reuse.'],['9000000000000000002','Understanding temperature','Temperature changes the next-token probability distribution. Lower values usually make sampling more concentrated.'],['9000000000000000003','Retrieval before reranking','RAG retrieval should first gather enough relevant candidates. Reranking cannot recover a document that retrieval never returned.'],['9000000000000000004','Evaluating an agent','Evaluation should measure tool selection and task completion. A judge can supplement human review using a reference dataset.']].forEach(([activityId,title,text])=>upsert({activityId,title,text,sample:true}));persist();$('notice').textContent='Synthetic demo loaded. Demo IDs do not identify real posts.'};load();
+
+// Explicit browser-session capture; no cookies or LinkedIn tokens leave Chrome.
+$('extension-id').value = localStorage.getItem('savesift:extension-id') || '';
+$('connect-extension').onclick = () => {
+  const id = $('extension-id').value.trim();
+  if (!/^[a-p]{32}$/.test(id)) { $('fetch-status').textContent = 'Enter the 32-character ID from the installed extension popup.'; return; }
+  localStorage.setItem('savesift:extension-id', id);
+  $('fetch-status').textContent = 'Extension ID saved. Enter a post URL or ID, then click Fetch.';
+};
+let fetching = false;
+$('fetch-post').onclick = async () => {
+  if (fetching) return;
+  const id = activity($('url').value);
+  const extensionId = $('extension-id').value.trim();
+  if (!id) { $('fetch-status').textContent = 'Enter a valid LinkedIn activity URL or ID first.'; return; }
+  if (!/^[a-p]{32}$/.test(extensionId) || !globalThis.chrome?.runtime?.sendMessage) {
+    $('fetch-status').textContent = 'Install the SaveSift Chrome extension and connect its ID below. Use Chrome to fetch through your LinkedIn session.'; return;
+  }
+  fetching = true;
+  const requestUser = user;
+  $('fetch-post').disabled = true;
+  $('fetch-status').textContent = 'Opening LinkedIn to read the post. If sign-in is required, log in there and retry here.';
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Extension timed out. Check the LinkedIn tab and retry.')), 35000);
+      chrome.runtime.sendMessage(extensionId, {type: 'SAVESIFT_FETCH_POST', activityId: id}, result => {
+        clearTimeout(timer);
+        if (chrome.runtime.lastError) reject(new Error('Extension unavailable. Install/reload version 0.2.0 and verify its ID.'));
+        else resolve(result);
+      });
+    });
+    if (response?.status !== 'ok') throw new Error(response?.error || 'Post text unavailable. You can paste the text manually.');
+    if (user !== requestUser || activity($('url').value) !== id) throw new Error('Workspace or URL changed during fetch. Retry for the current post.');
+    if (typeof response.title !== 'string' || typeof response.text !== 'string' || !response.text.trim()) throw new Error('Extension returned no usable post content.');
+    if (($('text').value.trim() || $('title').value.trim()) && !confirm('Replace the title and text currently in the form?')) {
+      $('fetch-status').textContent = 'Existing form content kept.'; return;
+    }
+    $('title').value = response.title.slice(0, 200);
+    $('text').value = response.text.slice(0, 50000);
+    $('fetch-status').textContent = response.possiblyTruncated ? 'Text captured; it may be truncated. Expand the post in LinkedIn and retry, or review before saving.' : 'Post captured. Review the title and text, then click Save post.';
+  } catch (e) { $('fetch-status').textContent = e.message; }
+  finally { fetching = false; $('fetch-post').disabled = false; }
+};

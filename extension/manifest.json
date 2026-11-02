@@ -1,13 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Saved Posts Lab \u2014 URL Collector",
-  "version": "0.1.0",
-  "description": "Explicitly collect current LinkedIn activity URLs and export JSON. No session access.",
+  "name": "SaveSift \u2014 LinkedIn Capture",
+  "version": "0.2.0",
+  "description": "Fetch visible LinkedIn post text on explicit request from SaveSift. Session cookies remain in the browser.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "action": {
     "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://www.linkedin.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://save-sift.onrender.com/*",
+      "https://saved-posts-lab-nithin.tanglednoodles.chatgpt.site/*",
+      "http://localhost:8000/*"
+    ]
   }
 }

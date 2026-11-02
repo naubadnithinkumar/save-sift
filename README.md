@@ -20,13 +20,29 @@ The extension ZIP is generated rather than checked into Git. You can also load t
 ## Current POC
 
 ## Scope
-Buildless browser-local app plus explicit-click Chrome URL collector. No OAuth, backend, automatic LinkedIn saved-state sync, content retrieval, embeddings, or LLM integration. Topic classification uses keyword rules; combined highlights extract the opening sentence of up to five displayed posts. Demo content and IDs are synthetic.
+Buildless browser-local app plus explicit-click Chrome URL collector and browser-session post capture. No OAuth, backend, automatic LinkedIn saved-state sync, embeddings, or LLM integration. Topic classification uses keyword rules; combined highlights extract the opening sentence of up to five displayed posts. Demo content and IDs are synthetic.
 
 ## Try it
 Open the published app. Load demo, filter topics, search, edit content, switch local workspace labels, export/import JSON. Import the supplied SaveState JSON to produce one activity reference. Paste text to organize it. Data lives in localStorage; labels are not a security boundary.
 
-## Extension
-Download extension.zip, extract it, open chrome://extensions, enable Developer mode, choose Load unpacked and select the extracted folder containing manifest.json. Open a LinkedIn activity URL, click the extension, collect URL, export JSON, import it into the app. It requests only activeTab and storage. It does not read cookies, scrape content, call Voyager, detect Save/Unsave, sync mobile activity, or send background requests. Extension has not been loaded into Chrome in this environment.
+## Chrome extension v0.2.0
+
+1. Download this repository and extract it, or pull the latest main branch.
+2. Open `chrome://extensions`, enable Developer mode, and Load unpacked the `extension/` directory. If already installed, reload it and approve the new LinkedIn host permission.
+3. Open the extension popup, copy its extension ID.
+4. Open https://save-sift.onrender.com, expand **Connect Chrome extension**, paste the ID and save it. Refresh the app after installing the extension.
+5. Enter a LinkedIn activity URL or ID and click **Fetch from LinkedIn**. The extension opens or focuses the post tab.
+6. If redirected to login, sign in directly on LinkedIn, return to SaveSift and retry. OAuth is not a way to obtain browser-session cookies.
+7. Return to SaveSift, review the title/text and click **Save post**.
+
+The title is derived from the first visible line of post text because posts do not always have a standalone title. Extraction depends on LinkedIn’s DOM and may fail or be truncated; expand the post manually and retry, or paste content. Images, video, and documents are not extracted. This is a technical POC; LinkedIn’s restrictions on scraping extensions remain a platform constraint.
+
+The extension requests `activeTab`, `storage`, `scripting`, and access to `https://www.linkedin.com/*`. Only the allowlisted SaveSift origins can request capture. It validates the activity ID, opens a LinkedIn page, and reads visible post text. It never reads or exports cookies, requests no cookies permission, calls no Voyager endpoints, and does not track Save/Unsave. Post content returns to the SaveSift page and is stored locally only after Save. Extension IDs are not authentication credentials. The Chrome integration has not been end-to-end verified in a logged-in browser here.
+
+```bash
+node check.cjs
+node check-extension.cjs
+```
 
 ## Minimal production data model
 user_saved_posts: userId + activityId, unique compound key; activityId is a string. Derive userId from server authentication. Keep content, processing state and topic membership separate. Do not infer unsaves from partial imports.
