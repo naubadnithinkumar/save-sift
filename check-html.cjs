@@ -1,0 +1,20 @@
+const vm = require('node:vm');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const id='7522886392381837312';
+const url='https://www.linkedin.com/feed/update/urn:li:activity:'+id+'/';
+let options;
+const ctx=vm.createContext({URL,AbortSignal,chrome:{runtime:{onMessageExternal:{addListener(){}},onMessage:{addListener(){}}}},fetch:async(u,o)=>{options=o;return {ok:true,url,headers:{get:()=> 'text/html'},text:async()=>'<main>fixture</main>'}},DOMParser:class{parseFromString(){return {querySelector(selector){if(selector.startsWith('link'))return {getAttribute:()=>url};return {querySelector(){return {textContent:'Inference techniques\nDetailed content.',querySelectorAll(){return []}}}}}}}}});
+vm.runInContext(fs.readFileSync('extension/background.js','utf8'),ctx);
+(async()=>{
+ const result=await vm.runInContext(`fetchPostHTML('${id}')`,ctx);
+ assert.equal(result.status,'ok');assert.equal(result.title,'Inference techniques');assert.equal(options.credentials,'omit');
+ ctx.fetch=async()=>({ok:true,url:'https://www.linkedin.com/authwall',headers:{get:()=> 'text/html'}});
+ assert.equal(await vm.runInContext(`fetchPostHTML('${id}')`,ctx),null);
+ ctx.fetch=async()=>({ok:true,url:url.replace(id,'1111111111111111111'),headers:{get:()=> 'text/html'},text:async()=>''});
+ ctx.DOMParser=class{parseFromString(){return {querySelector(){return null}}}};
+ assert.equal(await vm.runInContext(`fetchPostHTML('${id}')`,ctx),null);
+ ctx.fetch=async()=>{throw Error('network failure')};
+ assert.equal(await vm.runInContext(`fetchPostHTML('${id}')`,ctx),null);
+ console.log('PASS: HTML success, credentials omitted, authwall, wrong identity, network fallback');
+})().catch(e=>{console.error(e);process.exitCode=1});
