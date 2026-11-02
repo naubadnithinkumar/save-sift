@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Saved Posts Lab \u2014 URL Collector",
+  "version": "0.1.0",
+  "description": "Explicitly collect current LinkedIn activity URLs and export JSON. No session access.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
