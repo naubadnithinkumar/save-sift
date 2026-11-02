@@ -33,6 +33,40 @@ function extractPost(expectedId) {
   const title = text.split('\n').find(s => s.trim())?.trim().slice(0, 160) || document.title;
   return {status: 'ok', title, text: text.slice(0, 50000), author, url: location.href, possiblyTruncated: /…see more|\.\.\.see more|…more/i.test(text)};
 }
+
+// Runs in an isolated LinkedIn tab context. Parses inert HTML; executes no response scripts.
+async function fetchPostHTML(expectedId) {
+  const url = 'https://www.linkedin.com/feed/update/urn:li:activity:' + expectedId + '/';
+  try {
+    const response = await fetch(url, {credentials:'omit', signal:AbortSignal.timeout(8000)});
+    if (!response.ok || new URL(response.url).origin !== 'https://www.linkedin.com' ||
+        /\/(login|authwall|checkpoint|uas\/)/i.test(new URL(response.url).pathname)) return null;
+    if (!(response.headers.get('content-type') || '').includes('text/html')) return null;
+    const html = await response.text();
+    if (html.length > 5000000) return null;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const canonical = doc.querySelector('link[rel="canonical"]')?.getAttribute('href') || response.url;
+    if (!canonical.includes('urn:li:activity:' + expectedId) &&
+        !canonical.includes('activity-' + expectedId)) return null;
+    const root = doc.querySelector('[data-urn="urn:li:activity:' + expectedId + '"]') || doc.querySelector('main');
+    const selectors = ['[data-test-id="main-feed-activity-card__commentary"]',
+      '.main-feed-activity-card__commentary', '.feed-shared-update-v2__description'];
+    let text = '';
+    if (root) for (const selector of selectors) {
+      const element = root.querySelector(selector);
+      if (!element) continue;
+      element.querySelectorAll('script,style,noscript').forEach(node => node.remove());
+      element.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+      text = element.textContent.trim();
+      if (text) break;
+    }
+    if (!text) return null; // Metadata alone is not proof of complete post content.
+    return {status:'ok', title:text.split('\n').find(line=>line.trim()).trim().slice(0,160),
+      text:text.slice(0,50000), url, author:'', method:'html',
+      possiblyTruncated:/…|\.{3}|see more/i.test(text)};
+  } catch { return null; }
+}
+
 let pending = false;
 function handleCapture(message, sender, sendResponse) {
   let origin;
@@ -45,6 +79,18 @@ function handleCapture(message, sender, sendResponse) {
   (async () => {
     const tab = await findOrOpen(url);
     let result;
+    // Wait for a LinkedIn origin before attempting an HTML request in that context.
+    for (let ready = 0; ready < 8; ready++) {
+      const info = await chrome.tabs.get(tab.id);
+      if (info.status === 'complete') {
+        try {
+          const parsed = await chrome.scripting.executeScript({target:{tabId:tab.id}, func:fetchPostHTML, args:[message.activityId]});
+          if (parsed[0]?.result?.status === 'ok') return parsed[0].result;
+        } catch {}
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
     for (let attempt = 0; attempt < 24; attempt++) {
       await new Promise(r => setTimeout(r, 1000));
       try {
