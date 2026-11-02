@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SaveSift — LinkedIn Capture",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Fetch visible LinkedIn post text on explicit request from SaveSift. Session cookies remain in the browser.",
   "permissions": [
     "activeTab",
