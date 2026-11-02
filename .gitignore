@@ -1,4 +1,3 @@
-dist/extension.zip
 .env
 .env.*
 !.env.example
